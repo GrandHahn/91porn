@@ -307,7 +307,7 @@
     }
     
     NSArray *attach_popups = content.getElementByClass(@"attach_popup");
-    for (int i = 0; i < attachPopups.count; i++) {
+    for (int i = 0; i < attach_popups.count; i++) {
         GDataXMLElement *attach_popup = attach_popups[i];
         attach_popup.attributeMake(@"style", @"display: true");
     }
