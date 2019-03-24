@@ -73,7 +73,8 @@
     NSError *error = nil;
     GDataXMLElement *doc = [[GDataXMLElement alloc] initWithHTMLString:html error:&error];
     
-    NSString *videoUrl = [((GDataXMLElement *)[[doc nodesForXPath:@"//video" error:&error].firstObject nodesForXPath:@".//source" error:&error].firstObject) attributeForName:@"src"].stringValue;
+//    NSString *videoUrl = [((GDataXMLElement *)[[doc nodesForXPath:@"//video" error:&error].firstObject nodesForXPath:@".//source" error:&error].firstObject) attributeForName:@"src"].stringValue;
+    NSString *videoUrl = [self parseVideoUrl:html];
     
     NSInteger startIndex = [videoUrl rangeOfString:@"/" options:NSBackwardsSearch].location;
     NSInteger endIndex = [videoUrl rangeOfString:@".mp4"].location;
@@ -103,6 +104,36 @@
     result.videoName = videoName;
     
     return result;
+}
+
++ (NSString *)parseVideoUrl:(NSString *)html {
+    // 1.取出加密字段1和加密字段2
+    // 原表达式document\.write\(strencode\("(.+)","(.+)",".+"\)\);
+    NSString *pattern = @"document\\.write\\(strencode\\(\"(.+)\",\"(.+)\",\".+\"\\)\\);";
+    NSRegularExpression *regularExpression = [NSRegularExpression regularExpressionWithPattern:pattern options:NSRegularExpressionCaseInsensitive error:nil];
+    NSTextCheckingResult *result = [regularExpression matchesInString:html options:NSMatchingReportProgress range:NSMakeRange(0, html.length)].firstObject;
+    if (!result || [result numberOfRanges] < 3) return @"";
+    NSString *str1 = [html substringWithRange:[result rangeAtIndex:1]];
+    NSString *str2 = [html substringWithRange:[result rangeAtIndex:2]];
+    // 2.解密出source元素
+    NSData *data1 = [[NSData alloc] initWithBase64EncodedString:str1 options:NSDataBase64DecodingIgnoreUnknownCharacters];
+    NSData *data2 = [str2 dataUsingEncoding:NSUTF8StringEncoding];
+    NSMutableData *dataM = [NSMutableData data];
+    for (int i = 0; i < data1.length; i++) {
+        int k = i % data2.length;
+        Byte bytes1;
+        [data1 getBytes:&bytes1 range:NSMakeRange(i, 1)];
+        Byte bytes2;
+        [data2 getBytes:&bytes2 range:NSMakeRange(k, 1)];
+        Byte byte = bytes1 ^ bytes2;
+        [dataM appendBytes:&byte length:1];
+    }
+    NSData *sourceData = [[NSData alloc] initWithBase64EncodedData:dataM options:NSDataBase64DecodingIgnoreUnknownCharacters];
+    NSString *source = [[NSString alloc] initWithData:sourceData encoding:NSUTF8StringEncoding];
+    // 3.取出地址
+    GDataXMLElement *sourceElement = [[GDataXMLElement alloc] initWithHTMLString:source error:nil];
+    NSString *videoUrl = [[sourceElement nodesForXPath:@"//source" error:nil].firstObject attributeForName:@"src"].stringValue;
+    return videoUrl;
 }
 
 + (NSMutableArray *)parseRecentUpate:(NSString *)html {
@@ -174,7 +205,10 @@
     NSMutableArray *tempArr = [NSMutableArray array];
     for (int i = 0; i < lis.count; i++) {
         GDataXMLElement *li = lis[i];
-        NSString *contentUrl = li.selectFirst(@"a").attribute(@"href");
+//        NSString *contentUrl = li.selectFirst(@"a").attribute(@"href");
+        GDataXMLElement *aOfLi = li.selectFirst(@"a");
+        if (!aOfLi) continue;
+        NSString *contentUrl = aOfLi.attribute(@"href");
         NSInteger index = [contentUrl rangeOfString:@"/" options:NSBackwardsSearch].location;
         NSString *idStr = @"";
         if (index < contentUrl.length) {

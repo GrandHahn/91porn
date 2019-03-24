@@ -33,6 +33,8 @@
     [imageView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.left.top.right.bottom.equalTo(self.contentView);
     }];
+    imageView.contentMode = UIViewContentModeScaleAspectFill;
+    imageView.clipsToBounds = YES;
 }
 
 - (void)setItem:(MeiZiTuItem *)item {
