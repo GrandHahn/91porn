@@ -361,7 +361,9 @@
         } else if ([element.attribute(@"file") isKindOfClass:[NSString class]]
                    && ![element.attribute(@"file") isEqualToString:@""]) {
             imgUrl = element.attribute(@"file");
-            imgUrl = [NSString stringWithFormat:ForumUrlWith(@"/%@"), imgUrl];
+            if (![imgUrl containsString:@"http"]) {
+                imgUrl = [NSString stringWithFormat:ForumUrlWith(@"/%@"), imgUrl];
+            }
             element.attributeMake(@"src", imgUrl);
             [stringList addObject:imgUrl];
         }
